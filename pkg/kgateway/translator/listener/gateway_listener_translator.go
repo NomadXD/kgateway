@@ -563,6 +563,27 @@ func (tc *tcpFilterChain) translateTcpFilterChain(
 			return nil
 		}
 
+		// Resolve and translate TLS config for TLS termination (same as TCPRoute)
+		resolvedValidation, err := resolveFrontendTLSConfig(tc.parents.listener.Port, frontendTLSConfig)
+		if err != nil {
+			reportTLSConfigError(err, tc.listenerReporter, resolvedValidation != nil)
+			if resolvedValidation == nil {
+				return nil
+			}
+		}
+
+		tlsConfig, err := translateTLSConfig(kctx, ctx, tc.parents.listener, tc.tls, queries, resolvedValidation)
+		if err != nil {
+			reportTLSConfigError(err, tc.listenerReporter, tlsConfig != nil)
+			if tlsConfig == nil {
+				return nil
+			}
+		}
+
+		if tlsConfig != nil && len(tlsConfig.AlpnProtocols) == 0 {
+			tlsConfig.AlpnProtocols = []string{string(annotations.AllowEmptyAlpnProtocols)}
+		}
+
 		var matcher ir.FilterChainMatch
 		if tc.sniDomain != nil {
 			matcher.SniDomains = []string{string(*tc.sniDomain)}
@@ -572,6 +593,7 @@ func (tc *tcpFilterChain) translateTcpFilterChain(
 			FilterChainCommon: ir.FilterChainCommon{
 				FilterChainName: tcpHostName,
 				Matcher:         matcher,
+				TLS:             tlsConfig,
 			},
 			BackendRefs: backends,
 		}
