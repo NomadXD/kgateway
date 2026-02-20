@@ -493,7 +493,7 @@ func (tc *tcpFilterChain) translateTcpFilterChain(
 
 		tlsConfig, err := translateTLSConfig(kctx, ctx, tc.parents.listener, tc.tls, queries, resolvedValidation)
 		if err != nil {
-			// An error and a non-nil tlsCsonfig means that the listener is partially valid,
+			// An error and a non-nil tlsConfig means that the listener is partially valid,
 			// and we should continue to translate the listener after writing the error to status
 			reportTLSConfigError(err, tc.listenerReporter, tlsConfig != nil)
 			if tlsConfig == nil {
@@ -566,6 +566,8 @@ func (tc *tcpFilterChain) translateTcpFilterChain(
 		// Resolve and translate TLS config for TLS termination (same as TCPRoute)
 		resolvedValidation, err := resolveFrontendTLSConfig(tc.parents.listener.Port, frontendTLSConfig)
 		if err != nil {
+			// An error and a non-nil validation means that the listener is partially valid,
+			// and we should continue to translate the listener after writing the error to status
 			reportTLSConfigError(err, tc.listenerReporter, resolvedValidation != nil)
 			if resolvedValidation == nil {
 				return nil
@@ -574,6 +576,8 @@ func (tc *tcpFilterChain) translateTcpFilterChain(
 
 		tlsConfig, err := translateTLSConfig(kctx, ctx, tc.parents.listener, tc.tls, queries, resolvedValidation)
 		if err != nil {
+			// An error and a non-nil tlsConfig means that the listener is partially valid,
+			// and we should continue to translate the listener after writing the error to status
 			reportTLSConfigError(err, tc.listenerReporter, tlsConfig != nil)
 			if tlsConfig == nil {
 				return nil
