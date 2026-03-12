@@ -104,5 +104,5 @@ func (p *trafficPolicyPluginGwPass) handleRouteTracing(
 	if spec.tracing == nil || spec.tracing.tracing == nil {
 		return
 	}
-	out.Tracing = spec.tracing.tracing
+	out.Tracing = proto.Clone(spec.tracing.tracing).(*envoyroutev3.Tracing)
 }
