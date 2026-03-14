@@ -627,7 +627,7 @@ type RequestDecompression struct {
 // provider, route-level settings have no effect.
 // Ref: https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#config-route-v3-tracing
 //
-// +kubebuilder:validation:XValidation:rule="!has(self.disable) || (!has(self.clientSampling) && !has(self.randomSampling) && !has(self.overallSampling) && !has(self.customTags))",message="disable is mutually exclusive with other tracing fields"
+// +kubebuilder:validation:XValidation:rule="!has(self.disable) || (!has(self.clientSampling) && !has(self.randomSampling) && !has(self.overallSampling) && !has(self.attributes))",message="disable is mutually exclusive with other tracing fields"
 type RouteTracing struct {
 	// Target percentage of requests that will be force traced if the
 	// x-client-trace-id header is set. Overrides the listener-level setting.
@@ -651,12 +651,12 @@ type RouteTracing struct {
 	// +kubebuilder:validation:Maximum=100
 	OverallSampling *int32 `json:"overallSampling,omitempty"`
 
-	// Additional custom tags to add to active spans for this route.
-	// These are merged with listener-level custom tags configured via ListenerPolicy.
-	// On name collision, route-level tags take priority.
+	// Additional attributes to add to active spans for this route.
+	// These are merged with listener-level attributes configured via ListenerPolicy.
+	// On name collision, route-level attributes take priority.
 	// +optional
 	// +kubebuilder:validation:MaxItems=16
-	CustomTags []CustomAttribute `json:"customTags,omitempty"`
+	Attributes []CustomAttribute `json:"attributes,omitempty"`
 
 	// Disable tracing for this route.
 	// Can be used to disable tracing for specific routes when listener-level

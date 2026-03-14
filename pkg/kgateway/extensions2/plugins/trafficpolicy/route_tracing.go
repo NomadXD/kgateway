@@ -85,8 +85,8 @@ func constructRouteTracing(spec kgateway.TrafficPolicySpec, out *trafficPolicySp
 			Denominator: typev3.FractionalPercent_HUNDRED,
 		}
 	}
-	if len(rt.CustomTags) > 0 {
-		tracing.CustomTags = listenerpolicy.ConvertCustomAttributesToCustomTags(rt.CustomTags)
+	if len(rt.Attributes) > 0 {
+		tracing.CustomTags = listenerpolicy.ConvertCustomAttributesToCustomTags(rt.Attributes)
 	}
 
 	out.tracing = &routeTracingIR{

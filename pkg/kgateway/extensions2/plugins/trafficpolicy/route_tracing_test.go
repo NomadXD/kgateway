@@ -79,11 +79,11 @@ func TestConstructRouteTracing_PartialSampling(t *testing.T) {
 	assert.Nil(t, tr.OverallSampling, "unset sampling should be nil")
 }
 
-func TestConstructRouteTracing_CustomTags(t *testing.T) {
+func TestConstructRouteTracing_Attributes(t *testing.T) {
 	out := &trafficPolicySpecIr{}
 	constructRouteTracing(kgateway.TrafficPolicySpec{
 		Tracing: &kgateway.RouteTracing{
-			CustomTags: []kgateway.CustomAttribute{
+			Attributes: []kgateway.CustomAttribute{
 				{
 					Name: "route.id",
 					Literal: &kgateway.CustomAttributeLiteral{
@@ -126,12 +126,12 @@ func TestConstructRouteTracing_CustomTags(t *testing.T) {
 	assert.Equal(t, "AWS_REGION", tr.GetCustomTags()[2].GetEnvironment().GetName())
 }
 
-func TestConstructRouteTracing_SamplingWithCustomTags(t *testing.T) {
+func TestConstructRouteTracing_SamplingWithAttributes(t *testing.T) {
 	out := &trafficPolicySpecIr{}
 	constructRouteTracing(kgateway.TrafficPolicySpec{
 		Tracing: &kgateway.RouteTracing{
 			RandomSampling: ptr.To[int32](25),
-			CustomTags: []kgateway.CustomAttribute{
+			Attributes: []kgateway.CustomAttribute{
 				{
 					Name: "tag1",
 					Literal: &kgateway.CustomAttributeLiteral{

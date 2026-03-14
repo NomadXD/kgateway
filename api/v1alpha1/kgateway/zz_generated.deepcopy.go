@@ -4267,8 +4267,8 @@ func (in *RouteTracing) DeepCopyInto(out *RouteTracing) {
 		*out = new(int32)
 		**out = **in
 	}
-	if in.CustomTags != nil {
-		in, out := &in.CustomTags, &out.CustomTags
+	if in.Attributes != nil {
+		in, out := &in.Attributes, &out.Attributes
 		*out = make([]CustomAttribute, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

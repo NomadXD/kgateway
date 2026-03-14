@@ -55,7 +55,7 @@ spec:
       name: example-route
   tracing:
     randomSampling: 50
-    customTags:
+    attributes:
     - name: "route.id"
       literal:
         value: "my-route"
