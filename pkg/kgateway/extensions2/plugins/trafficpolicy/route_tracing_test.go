@@ -94,7 +94,7 @@ func TestConstructRouteTracing_Attributes(t *testing.T) {
 					Name: "request.id",
 					RequestHeader: &kgateway.CustomAttributeHeader{
 						Name:         "x-request-id",
-						DefaultValue: ptr.To("unknown"),
+						DefaultValue: new("Request"),
 					},
 				},
 				{
@@ -119,7 +119,7 @@ func TestConstructRouteTracing_Attributes(t *testing.T) {
 	// Request header tag
 	assert.Equal(t, "request.id", tr.GetCustomTags()[1].GetTag())
 	assert.Equal(t, "x-request-id", tr.GetCustomTags()[1].GetRequestHeader().GetName())
-	assert.Equal(t, "unknown", tr.GetCustomTags()[1].GetRequestHeader().GetDefaultValue())
+	assert.Equal(t, "Request", tr.GetCustomTags()[1].GetRequestHeader().GetDefaultValue())
 
 	// Environment tag
 	assert.Equal(t, "env.region", tr.GetCustomTags()[2].GetTag())
