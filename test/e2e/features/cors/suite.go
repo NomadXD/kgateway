@@ -321,14 +321,15 @@ func (s *testingSuite) assertResponse(path string, requestHeaders map[string]str
 }
 
 // assertNegativePreflightResponse asserts that a non-matching preflight request
-// does not return CORS headers. Per the Gateway API conformance spec, non-matching
-// preflight responses may return 200, 204, or 403.
+// does not grant cross-origin access. Per the Gateway API conformance test
+// (HTTPRouteCORS), non-matching preflight responses may return 200, 204, or 403
+// and must not include the Access-Control-Allow-Origin header.
 func (s *testingSuite) assertNegativePreflightResponse(path string, requestHeaders map[string]string) {
 	common.BaseGateway.Send(
 		s.T(),
 		&testmatchers.HttpResponse{
 			StatusCodes: []int{http.StatusOK, http.StatusNoContent, http.StatusForbidden},
-			NotHeaders:  []string{"Access-Control-Allow-Origin", "Access-Control-Allow-Methods", "Access-Control-Allow-Headers"},
+			NotHeaders:  []string{"Access-Control-Allow-Origin"},
 		},
 		curl.WithMethod(http.MethodOptions),
 		curl.WithPath(path),
