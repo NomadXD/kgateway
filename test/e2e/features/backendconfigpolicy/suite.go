@@ -10,8 +10,6 @@ import (
 	"time"
 
 	adminv3 "github.com/envoyproxy/go-control-plane/envoy/admin/v3"
-	envoycorev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	envoyproxyprotocolv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/proxy_protocol/v3"
 	envoy_upstreams_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/upstreams/http/v3"
 	"github.com/onsi/gomega"
 	"github.com/stretchr/testify/suite"
@@ -83,7 +81,6 @@ func (s *testingSuite) SetupSuite() {
 		},
 		"TestBackendConfigPolicyUpstreamProxyProtocol": {
 			upstreamProxyProtocolManifest,
-			nginxManifest,
 		},
 	}
 }
@@ -339,40 +336,24 @@ func (s *testingSuite) TestBackendConfigPolicyOutlierDetection() {
 }
 
 func (s *testingSuite) TestBackendConfigPolicyUpstreamProxyProtocol() {
-	// Verify the cluster has the upstream proxy protocol transport socket configured
-	s.testInstallation.AssertionsT(s.T()).AssertEnvoyAdminApi(s.ctx, proxyObjectMeta, func(ctx context.Context, adminClient *admincli.Client) {
-		s.testInstallation.AssertionsT(s.T()).Gomega.Eventually(func(g gomega.Gomega) {
-			clusters, err := adminClient.GetDynamicClusters(ctx)
-			g.Expect(err).NotTo(gomega.HaveOccurred(), "can get dynamic clusters")
-
-			cluster, ok := clusters["kube_kgateway-base_upstream-pp-svc_8080"]
-			g.Expect(ok).To(gomega.BeTrue(), "upstream-pp-svc cluster should be in Envoy xDS")
-			g.Expect(cluster.GetTransportSocket()).NotTo(gomega.BeNil(), "transport socket should be set")
-			g.Expect(cluster.GetTransportSocket().GetName()).To(gomega.Equal("envoy.transport_sockets.upstream_proxy_protocol"),
-				"transport socket should be upstream_proxy_protocol")
-
-			// Unmarshal the typed config to verify the proxy protocol configuration
-			ppTransport := &envoyproxyprotocolv3.ProxyProtocolUpstreamTransport{}
-			err = anypb.UnmarshalTo(cluster.GetTransportSocket().GetTypedConfig(), ppTransport, proto.UnmarshalOptions{})
-			g.Expect(err).NotTo(gomega.HaveOccurred(), "can unmarshal proxy protocol upstream transport")
-
-			// Verify proxy protocol version is V1
-			g.Expect(ppTransport.GetConfig()).NotTo(gomega.BeNil(), "proxy protocol config should be set")
-			g.Expect(ppTransport.GetConfig().GetVersion()).To(gomega.Equal(envoycorev3.ProxyProtocolConfig_V1),
-				"proxy protocol version should be V1")
-
-			// Verify inner transport socket is raw_buffer (no TLS configured)
-			g.Expect(ppTransport.GetTransportSocket()).NotTo(gomega.BeNil(), "inner transport socket should be set")
-			g.Expect(ppTransport.GetTransportSocket().GetName()).To(gomega.Equal("envoy.transport_sockets.raw_buffer"),
-				"inner transport socket should be raw_buffer")
-			g.Expect(ppTransport.GetTransportSocket().GetTypedConfig()).NotTo(gomega.BeNil(),
-				"inner transport socket typed config should be set")
-		}).
-			WithContext(ctx).
-			WithTimeout(120 * time.Second).
-			WithPolling(2 * time.Second).
-			Should(gomega.Succeed())
-	})
+	// This test deploys nginx configured to accept only PROXY protocol connections.
+	// If the BackendConfigPolicy correctly enables upstream proxy protocol on Envoy,
+	// nginx will accept the connection and respond with 200. Without proxy protocol,
+	// nginx would reject the connection with a 400 error.
+	// The nginx config also echoes back the client address received via PROXY protocol
+	// in the X-Proxy-Protocol-Addr response header.
+	common.BaseGateway.Send(
+		s.T(),
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body:       gomega.ContainSubstring("proxy-protocol-ok"),
+			Headers: map[string]any{
+				"X-Proxy-Protocol-Addr": gomega.Not(gomega.BeEmpty()),
+			},
+		},
+		curl.WithHostHeader("example.com"),
+		curl.WithPort(80),
+	)
 }
 
 const (
