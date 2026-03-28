@@ -58,9 +58,9 @@ The following types are added:
 
 ```go
 // FaultInjectionPolicy configures fault injection for testing service resiliency.
-// At least one of delay, abort, or responseRateLimit must be specified.
+// At least one of delay, abort, responseRateLimit, or disable must be specified.
 //
-// +kubebuilder:validation:AtLeastOneOf=delay;abort;responseRateLimit
+// +kubebuilder:validation:AtLeastOneOf=delay;abort;responseRateLimit;disable
 type FaultInjectionPolicy struct {
     // Delay injects latency into requests before forwarding upstream.
     // +optional
@@ -77,7 +77,8 @@ type FaultInjectionPolicy struct {
 
     // MaxActiveFaults limits the number of concurrent active faults.
     // When this limit is reached, new requests will not have faults injected.
-    // If not specified, defaults to unlimited.
+    // If not specified or set to 0, the number of active faults is unlimited.
+    // To effectively disable fault injection, use the Disable field instead.
     // +optional
     // +kubebuilder:validation:Minimum=0
     MaxActiveFaults *uint32 `json:"maxActiveFaults,omitempty"`
@@ -149,11 +150,11 @@ type FaultResponseRateLimit struct {
 
 ### Envoy Configuration
 
-The `envoy.filters.http.fault` HTTP filter is added at the Envoy listener level (inside the HTTP connection manager's `http_filters` chain) with no fault configuration. This registers the filter in the chain but does not inject any faults by default.
+The `envoy.filters.http.fault` HTTP filter is added to the Envoy listener's HTTP connection manager `http_filters` chain only when at least one route or virtual host on that listener has fault injection configured. When present, the listener-level filter is configured with an empty `HTTPFault` proto and is globally disabled, so it is a no-op by default.
 
-Actual fault behavior is configured per-route using `typed_per_filter_config`, which overrides the empty listener-level filter with specific delay, abort, or rate limit settings for individual routes. This pattern ensures that only targeted routes have faults injected while all other routes pass through unaffected.
+Actual fault behavior is configured per-route or per-virtual-host using `typed_per_filter_config`, which enables the filter and supplies delay, abort, or rate limit settings for individual routes that opt in to fault injection. When the TrafficPolicy targets a Gateway, the fault configuration is applied at the virtual host level. When it targets an HTTPRoute, it is applied at the route level. Routes and virtual hosts without fault injection configured are unaffected.
 
-**HTTP filter at the listener level (globally):**
+**HTTP filter at the listener level (conditionally inserted, globally disabled):**
 
 ```json
 {
@@ -209,8 +210,8 @@ No new controllers are required. Existing TrafficPolicy controllers handle the n
 
 The translator needs updates to:
 
-1. **Filter chain construction:** Add the `envoy.filters.http.fault` filter to the HTTP filter chain when any route on the listener has fault injection configured
-2. **Route configuration:** Apply per-route fault injection configuration via `typed_per_filter_config`
+1. **Filter chain construction:** Conditionally add the `envoy.filters.http.fault` filter (globally disabled) to the HTTP filter chain when any route or virtual host on the listener has fault injection configured
+2. **Per-route/per-vhost configuration:** Apply fault injection configuration via `typed_per_filter_config` at the route level (HTTPRoute target) or virtual host level (Gateway target)
 3. **Policy merge:** Support merging fault injection policies across different attachment levels (Gateway, Listener, Route)
 
 ### Example Usage
