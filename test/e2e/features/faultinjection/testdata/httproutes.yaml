@@ -14,6 +14,12 @@ spec:
         - path:
             type: PathPrefix
             value: /fault
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
       backendRefs:
         - name: httpbin
           port: 8000
@@ -34,6 +40,12 @@ spec:
         - path:
             type: PathPrefix
             value: /no-fault
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
       backendRefs:
         - name: httpbin
           port: 8000

@@ -4,14 +4,16 @@ import (
 	"testing"
 	"time"
 
+	faulthttpv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/fault/v3"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kgateway-dev/kgateway/v2/api/v1alpha1/kgateway"
 	"github.com/kgateway-dev/kgateway/v2/api/v1alpha1/shared"
+	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/ir"
 )
 
-func ptr32(i int32) *int32 { return &i }
+func ptr32(i int32) *int32    { return &i }
 func ptrU32(i uint32) *uint32 { return &i }
 
 func TestFaultInjectionIREquals(t *testing.T) {
@@ -201,4 +203,45 @@ func TestConstructFaultInjection(t *testing.T) {
 			tt.verify(t, out)
 		})
 	}
+}
+
+func TestHandleFaultInjection_Disable(t *testing.T) {
+	t.Run("nil IR adds no config", func(t *testing.T) {
+		p := &trafficPolicyPluginGwPass{}
+		typedFilterConfig := ir.TypedFilterConfigMap{}
+		p.handleFaultInjection("test-chain", &typedFilterConfig, nil)
+
+		assert.Nil(t, typedFilterConfig[faultFilterName], "expected no typed config for fault filter")
+	})
+
+	t.Run("non-nil httpFault adds typed config", func(t *testing.T) {
+		p := &trafficPolicyPluginGwPass{}
+		typedFilterConfig := ir.TypedFilterConfigMap{}
+		fi := &faultInjectionIR{httpFault: &faulthttpv3.HTTPFault{
+			Abort: &faulthttpv3.FaultAbort{
+				ErrorType: &faulthttpv3.FaultAbort_HttpStatus{HttpStatus: 503},
+			},
+		}}
+		p.handleFaultInjection("test-chain", &typedFilterConfig, fi)
+
+		cfg := typedFilterConfig[faultFilterName]
+		assert.NotNil(t, cfg, "expected typed config for fault filter")
+		httpFault, ok := cfg.(*faulthttpv3.HTTPFault)
+		assert.True(t, ok)
+		assert.NotNil(t, httpFault.Abort)
+	})
+
+	t.Run("disable adds empty typed config to override parent", func(t *testing.T) {
+		p := &trafficPolicyPluginGwPass{}
+		typedFilterConfig := ir.TypedFilterConfigMap{}
+		fi := &faultInjectionIR{httpFault: nil}
+		p.handleFaultInjection("test-chain", &typedFilterConfig, fi)
+
+		cfg := typedFilterConfig[faultFilterName]
+		assert.NotNil(t, cfg, "expected typed config for fault filter to override parent")
+		httpFault, ok := cfg.(*faulthttpv3.HTTPFault)
+		assert.True(t, ok, "expected HTTPFault type")
+		assert.Nil(t, httpFault.Abort, "expected no abort in disable override")
+		assert.Nil(t, httpFault.Delay, "expected no delay in disable override")
+	})
 }

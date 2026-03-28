@@ -76,3 +76,61 @@ func (s *testingSuite) TestFaultInjectionDelayOnRoute() {
 	elapsed := time.Since(start)
 	s.GreaterOrEqual(elapsed, 100*time.Millisecond, "expected response to take at least 100ms due to fault delay injection")
 }
+
+// TestFaultInjectionAbortOnGateway verifies that a TrafficPolicy with abort attached
+// to a Gateway returns the configured status code on a route through that gateway.
+func (s *testingSuite) TestFaultInjectionAbortOnGateway() {
+	common.BaseGateway.Send(
+		s.T(),
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusServiceUnavailable,
+		},
+		curl.WithPort(80),
+		curl.WithPath("/fault/status/200"),
+		curl.WithHostHeader("example.com"),
+	)
+}
+
+// TestFaultInjectionAbortOnGatewayAffectsAllRoutes verifies that a fault injection
+// policy attached to a Gateway affects all routes on that gateway, not just one.
+func (s *testingSuite) TestFaultInjectionAbortOnGatewayAffectsAllRoutes() {
+	common.BaseGateway.Send(
+		s.T(),
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusServiceUnavailable,
+		},
+		curl.WithPort(80),
+		curl.WithPath("/no-fault/status/200"),
+		curl.WithHostHeader("example.com"),
+	)
+}
+
+// TestFaultInjectionDisableOverridesGatewayPolicy verifies that a route-level
+// TrafficPolicy with faultInjection.disable overrides a gateway-level fault
+// injection policy, allowing the route to respond normally.
+func (s *testingSuite) TestFaultInjectionDisableOverridesGatewayPolicy() {
+	common.BaseGateway.Send(
+		s.T(),
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+		},
+		curl.WithPort(80),
+		curl.WithPath("/no-fault/status/200"),
+		curl.WithHostHeader("example.com"),
+	)
+}
+
+// TestFaultInjectionDisableDoesNotAffectOtherRoutes verifies that a route-level
+// disable does not affect other routes that should still have the gateway-level
+// fault injection applied.
+func (s *testingSuite) TestFaultInjectionDisableDoesNotAffectOtherRoutes() {
+	common.BaseGateway.Send(
+		s.T(),
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusServiceUnavailable,
+		},
+		curl.WithPort(80),
+		curl.WithPath("/fault/status/200"),
+		curl.WithHostHeader("example.com"),
+	)
+}

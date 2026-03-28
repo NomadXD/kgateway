@@ -102,6 +102,11 @@ func (p *trafficPolicyPluginGwPass) handleFaultInjection(fcn string, pCtxTypedFi
 
 	if fi.httpFault != nil {
 		pCtxTypedFilterConfig.AddTypedConfig(faultFilterName, fi.httpFault)
+	} else {
+		// When httpFault is nil, the policy has disable set. Add an empty
+		// HTTPFault as per-route config to override any fault injection
+		// configured at a higher level (e.g. Gateway-attached policy).
+		pCtxTypedFilterConfig.AddTypedConfig(faultFilterName, &faulthttpv3.HTTPFault{})
 	}
 
 	if p.faultInChain == nil {
