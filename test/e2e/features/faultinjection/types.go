@@ -11,12 +11,12 @@ import (
 
 var (
 	// manifests
-	serviceManifest            = filepath.Join(fsutils.MustGetThisDir(), "testdata", "service.yaml")
-	httpRoutesManifest         = filepath.Join(fsutils.MustGetThisDir(), "testdata", "httproutes.yaml")
-	faultAbortManifest         = filepath.Join(fsutils.MustGetThisDir(), "testdata", "tp-fault-abort.yaml")
-	faultDelayManifest         = filepath.Join(fsutils.MustGetThisDir(), "testdata", "tp-fault-delay.yaml")
-	faultAbortGatewayManifest  = filepath.Join(fsutils.MustGetThisDir(), "testdata", "tp-fault-abort-gateway.yaml")
-	faultDisableRouteManifest  = filepath.Join(fsutils.MustGetThisDir(), "testdata", "tp-fault-disable-route.yaml")
+	serviceManifest           = filepath.Join(fsutils.MustGetThisDir(), "testdata", "service.yaml")
+	httpRoutesManifest        = filepath.Join(fsutils.MustGetThisDir(), "testdata", "httproutes.yaml")
+	faultAbortManifest        = filepath.Join(fsutils.MustGetThisDir(), "testdata", "tp-fault-abort.yaml")
+	faultDelayManifest        = filepath.Join(fsutils.MustGetThisDir(), "testdata", "tp-fault-delay.yaml")
+	faultAbortGatewayManifest = filepath.Join(fsutils.MustGetThisDir(), "testdata", "tp-fault-abort-gateway.yaml")
+	faultDisableRouteManifest = filepath.Join(fsutils.MustGetThisDir(), "testdata", "tp-fault-disable-route.yaml")
 
 	setup = base.TestCase{
 		Manifests: []string{serviceManifest},

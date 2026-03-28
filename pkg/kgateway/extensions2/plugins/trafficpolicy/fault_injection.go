@@ -25,7 +25,7 @@ func (f *faultInjectionIR) Equals(other PolicySubIR) bool {
 	if !ok {
 		return false
 	}
-	if f == nil || other == nil {
+	if f == nil || otherFault == nil {
 		return f == nil && otherFault == nil
 	}
 	return proto.Equal(f.httpFault, otherFault.httpFault)
@@ -65,11 +65,11 @@ func constructFaultInjection(spec kgateway.TrafficPolicySpec, out *trafficPolicy
 		}
 		if fi.Abort.HttpStatus != nil {
 			abort.ErrorType = &faulthttpv3.FaultAbort_HttpStatus{
-				HttpStatus: uint32(*fi.Abort.HttpStatus),
+				HttpStatus: uint32(max(*fi.Abort.HttpStatus, 0)), //#nosec G115 - CRD validates Minimum=200
 			}
 		} else if fi.Abort.GrpcStatus != nil {
 			abort.ErrorType = &faulthttpv3.FaultAbort_GrpcStatus{
-				GrpcStatus: uint32(*fi.Abort.GrpcStatus),
+				GrpcStatus: uint32(max(*fi.Abort.GrpcStatus, 0)), //#nosec G115 - CRD validates Minimum=0
 			}
 		}
 		httpFault.Abort = abort
@@ -122,7 +122,7 @@ func toFractionalPercent(percentage *int32) *typev3.FractionalPercent {
 		return nil
 	}
 	return &typev3.FractionalPercent{
-		Numerator:   uint32(*percentage),
+		Numerator:   uint32(max(*percentage, 0)), //#nosec G115 - CRD validates Minimum=0
 		Denominator: typev3.FractionalPercent_HUNDRED,
 	}
 }

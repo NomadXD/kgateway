@@ -672,7 +672,7 @@ type RouteTracing struct {
 }
 
 // FaultInjectionPolicy configures fault injection for testing service resiliency.
-// At least one of delay, abort, or responseRateLimit must be specified.
+// At least one of delay, abort, responseRateLimit, or disable must be specified.
 //
 // +kubebuilder:validation:AtLeastOneOf=delay;abort;responseRateLimit;disable
 type FaultInjectionPolicy struct {

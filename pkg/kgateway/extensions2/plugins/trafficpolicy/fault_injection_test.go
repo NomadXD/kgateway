@@ -13,8 +13,11 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/ir"
 )
 
-func ptr32(i int32) *int32    { return &i }
-func ptrU32(i uint32) *uint32 { return &i }
+//go:fix inline
+func ptr32(i int32) *int32 { return new(i) }
+
+//go:fix inline
+func ptrU32(i uint32) *uint32 { return new(i) }
 
 func TestFaultInjectionIREquals(t *testing.T) {
 	delay100ms := &kgateway.FaultInjectionPolicy{
