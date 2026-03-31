@@ -57,9 +57,13 @@ type ParentRefKey struct {
 	Group string
 	Kind  string
 	types.NamespacedName
+	SectionName string
 }
 
 func (p *ParentRefKey) String() string {
+	if p.SectionName != "" {
+		return fmt.Sprintf("%s/%s/%s/%s", p.Group, p.Kind, p.NamespacedName.String(), p.SectionName)
+	}
 	return fmt.Sprintf("%s/%s/%s", p.Group, p.Kind, p.NamespacedName.String())
 }
 
@@ -364,6 +368,10 @@ func getParentRefKey(parentRef *gwv1.ParentReference) ParentRefKey {
 	if parentRef.Namespace != nil {
 		ns = string(*parentRef.Namespace)
 	}
+	var sectionName string
+	if parentRef.SectionName != nil {
+		sectionName = string(*parentRef.SectionName)
+	}
 	return ParentRefKey{
 		Group: group,
 		Kind:  kind,
@@ -371,6 +379,7 @@ func getParentRefKey(parentRef *gwv1.ParentReference) ParentRefKey {
 			Namespace: ns,
 			Name:      string(parentRef.Name),
 		},
+		SectionName: sectionName,
 	}
 }
 
