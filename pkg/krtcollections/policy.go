@@ -154,9 +154,10 @@ func (i *BackendIndex) AddBackends(gk schema.GroupKind, col krt.Collection[ir.Ba
 	backendsWithPoliciesCol := krt.NewCollection(col, func(kctx krt.HandlerContext, backendObj ir.BackendObjectIR) **ir.BackendObjectIR {
 		// Look up service-wide policies (no sectionName)
 		policies := i.policies.getTargetingPoliciesForBackends(kctx, backendObj.ObjectSource, "", backendObj.GetObjectLabels(), false)
-		// Also look up port specific policies if the backend has a port name (e.g., BackendTLSPolicy with sectionName)
+		// Also look up port specific policies if the backend has a port name (e.g., BackendTLSPolicy with sectionName).
+		// excludeGlobal=true since global policies are already included from the first lookup above.
 		if backendObj.PortName != "" {
-			portPolicies := i.policies.getTargetingPoliciesForBackends(kctx, backendObj.ObjectSource, backendObj.PortName, backendObj.GetObjectLabels(), false)
+			portPolicies := i.policies.getTargetingPoliciesForBackends(kctx, backendObj.ObjectSource, backendObj.PortName, backendObj.GetObjectLabels(), true)
 			policies = append(policies, portPolicies...)
 		}
 		anyHasRef := false
