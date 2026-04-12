@@ -676,6 +676,17 @@ func TestBasic(t *testing.T) {
 		})
 	})
 
+	t.Run("TrafficPolicy ExtProc with configurable filter stage", func(t *testing.T) {
+		test(t, translatorTestCase{
+			inputFile:  "traffic-policy/extproc-filter-stage.yaml",
+			outputFile: "traffic-policy/extproc-filter-stage.yaml",
+			gwNN: types.NamespacedName{
+				Namespace: "default",
+				Name:      "test",
+			},
+		})
+	})
+
 	t.Run("TrafficPolicy Transformation deep merge", func(t *testing.T) {
 		test(t, translatorTestCase{
 			inputFile:  "traffic-policy/transformation-deep-merge.yaml",

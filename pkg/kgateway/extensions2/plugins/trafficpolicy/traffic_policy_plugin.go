@@ -423,13 +423,19 @@ func (p *trafficPolicyPluginGwPass) HttpFilters(_ ir.HttpFiltersContext, fcc ir.
 			continue
 		}
 
-		// add the specific auth filter
+		// Resolve weight: use FilterStageConfig.Weight if set,
+		// otherwise fall back to PrecedenceWeight for backward compat
+		weight := provider.Extension.PrecedenceWeight
+		if provider.Extension.FilterStage != nil && provider.Extension.FilterStage.Weight != 0 {
+			weight = provider.Extension.FilterStage.Weight
+		}
+
 		extProcName := extProcFilterName(provider.Name)
 		stagedExtProcFilter := filters.MustNewStagedFilterWithWeight(
 			extProcName,
 			extProcFilter,
-			filters.AfterStage(filters.WellKnownFilterStage(filters.AuthZStage)),
-			provider.Extension.PrecedenceWeight,
+			provider.FilterStage,
+			weight,
 		)
 
 		// handle the case where route level only should be fired
