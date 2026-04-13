@@ -1,0 +1,176 @@
+---
+# ExtProc server A: identifies itself via x-extproc-server-a header
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ext-proc-server-a
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ext-proc-server-a
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ext-proc-server-a
+    spec:
+      containers:
+        - name: ext-proc-server-a
+          image: ghcr.io/kgateway-dev/extproc-server:0.0.1
+          imagePullPolicy: IfNotPresent
+          command: ["./server", "--add-header", "x-extproc-server-a:true"]
+          ports:
+            - containerPort: 18080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ext-proc-server-a
+spec:
+  ports:
+    - port: 4444
+      targetPort: 18080
+      protocol: TCP
+      appProtocol: kubernetes.io/h2c
+  selector:
+    app.kubernetes.io/name: ext-proc-server-a
+---
+# ExtProc server B: identifies itself via x-extproc-server-b header
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ext-proc-server-b
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ext-proc-server-b
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ext-proc-server-b
+    spec:
+      containers:
+        - name: ext-proc-server-b
+          image: ghcr.io/kgateway-dev/extproc-server:0.0.1
+          imagePullPolicy: IfNotPresent
+          command: ["./server", "--add-header", "x-extproc-server-b:true"]
+          ports:
+            - containerPort: 18080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ext-proc-server-b
+spec:
+  ports:
+    - port: 4444
+      targetPort: 18080
+      protocol: TCP
+      appProtocol: kubernetes.io/h2c
+  selector:
+    app.kubernetes.io/name: ext-proc-server-b
+---
+# GatewayExtension A (will be attached at Gateway level)
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayExtension
+metadata:
+  name: ext-proc-a
+spec:
+  extProc:
+    grpcService:
+      backendRef:
+        name: ext-proc-server-a
+        port: 4444
+---
+# GatewayExtension B (will be attached at route level)
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayExtension
+metadata:
+  name: ext-proc-b
+spec:
+  extProc:
+    grpcService:
+      backendRef:
+        name: ext-proc-server-b
+        port: 4444
+---
+# Gateway with deep merge annotation to allow cross-hierarchy ExtProc merge
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gw-deep-merge
+  annotations:
+    kgateway.dev/inherited-policy-priority: DeepMergePreferParent
+spec:
+  gatewayClassName: kgateway
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 8080
+---
+# Gateway-level TrafficPolicy: ext-proc-a applies to all routes
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: extproc-gateway-level
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: gw-deep-merge
+  extProc:
+    extensionRef:
+      name: ext-proc-a
+---
+# Route-level TrafficPolicy: ext-proc-b applies only to route-both
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: extproc-route-level
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: route-both
+  extProc:
+    extensionRef:
+      name: ext-proc-b
+---
+# Route with both gateway-level and route-level ExtProc (deep merge)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-both
+spec:
+  parentRefs:
+    - name: gw-deep-merge
+  hostnames:
+    - "www.example.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /both
+      backendRefs:
+        - name: backend
+          port: 3000
+---
+# Route with only gateway-level ExtProc (no route-level policy)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-gateway-only
+spec:
+  parentRefs:
+    - name: gw-deep-merge
+  hostnames:
+    - "www.example.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /gateway-only
+      backendRefs:
+        - name: backend
+          port: 3000

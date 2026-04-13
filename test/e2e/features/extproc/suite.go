@@ -49,6 +49,13 @@ var (
 		"TestExtProcWithBackendFilter": {
 			Manifests: []string{backendFilterManifest},
 		},
+		"TestExtProcWithFilterStage": {
+			Manifests:       []string{filterStageManifest},
+			MinGwApiVersion: base.GwApiRequireRouteNames,
+		},
+		"TestExtProcWithDeepMerge": {
+			Manifests: []string{deepMergeManifest},
+		},
 	}
 )
 
@@ -270,6 +277,130 @@ func (s *testingSuite) TestExtProcWithBackendFilter() {
 			Body: gomega.WithTransform(transforms.WithJsonBody(),
 				gomega.And(
 					gomega.HaveKeyWithValue("headers", gomega.Not(gomega.HaveKey("Extproctest"))),
+				),
+			),
+		})
+}
+
+// TestExtProcWithFilterStage tests that ExtProc works correctly when configured
+// with a custom filter stage via filterStage on the GatewayExtension.
+func (s *testingSuite) TestExtProcWithFilterStage() {
+	// Route with ExtProc at early stage (After Fault) - should have header modified
+	s.TestInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
+		s.Ctx,
+		testdefaults.CurlPodExecOpt,
+		[]curl.Option{
+			curl.WithHost(kubeutils.ServiceFQDN(gatewayService.ObjectMeta)),
+			curl.VerboseOutput(),
+			curl.WithHostHeader("www.example.com"),
+			curl.WithPath("/early-extproc"),
+			curl.WithPort(8080),
+			curl.WithHeader("instructions", getInstructionsJson(instructions{
+				AddHeaders: map[string]string{"extproc-early": "true"},
+			})),
+		},
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body: gomega.WithTransform(transforms.WithJsonBody(),
+				gomega.And(
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("Extproc-Early")),
+				),
+			),
+		})
+
+	// Route with ExtProc at default stage (After AuthZ) - should also have header modified
+	s.TestInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
+		s.Ctx,
+		testdefaults.CurlPodExecOpt,
+		[]curl.Option{
+			curl.WithHost(kubeutils.ServiceFQDN(gatewayService.ObjectMeta)),
+			curl.VerboseOutput(),
+			curl.WithHostHeader("www.example.com"),
+			curl.WithPath("/default-extproc"),
+			curl.WithPort(8080),
+			curl.WithHeader("instructions", getInstructionsJson(instructions{
+				AddHeaders: map[string]string{"extproc-default": "true"},
+			})),
+		},
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body: gomega.WithTransform(transforms.WithJsonBody(),
+				gomega.And(
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("Extproc-Default")),
+				),
+			),
+		})
+
+	// Route without ExtProc - should NOT have header modified
+	s.TestInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
+		s.Ctx,
+		testdefaults.CurlPodExecOpt,
+		[]curl.Option{
+			curl.WithHost(kubeutils.ServiceFQDN(gatewayService.ObjectMeta)),
+			curl.VerboseOutput(),
+			curl.WithHostHeader("www.example.com"),
+			curl.WithPath("/no-extproc"),
+			curl.WithPort(8080),
+			curl.WithHeader("instructions", getInstructionsJson(instructions{
+				AddHeaders: map[string]string{"extproc-none": "true"},
+			})),
+		},
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body: gomega.WithTransform(transforms.WithJsonBody(),
+				gomega.And(
+					gomega.HaveKeyWithValue("headers", gomega.Not(gomega.HaveKey("Extproc-None"))),
+				),
+			),
+		})
+}
+
+// TestExtProcWithDeepMerge tests that two ExtProc filters from different
+// hierarchy levels (Gateway + HTTPRoute) can both be active on the same route
+// when the Gateway has the inherited-policy-priority annotation set to
+// DeepMergePreferParent. Each filter uses a distinct ExtProc server that adds
+// its own identifying header, proving both filters ran.
+func (s *testingSuite) TestExtProcWithDeepMerge() {
+	// /both - both gateway-level and route-level ExtProc should run
+	// Expect both x-extproc-server-a (gateway-level) and x-extproc-server-b (route-level) headers
+	s.TestInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
+		s.Ctx,
+		testdefaults.CurlPodExecOpt,
+		[]curl.Option{
+			curl.WithHost(kubeutils.ServiceFQDN(deepMergeGatewayService.ObjectMeta)),
+			curl.VerboseOutput(),
+			curl.WithHostHeader("www.example.com"),
+			curl.WithPath("/both"),
+			curl.WithPort(8080),
+		},
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body: gomega.WithTransform(transforms.WithJsonBody(),
+				gomega.And(
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Extproc-Server-A")),
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Extproc-Server-B")),
+				),
+			),
+		})
+
+	// /gateway-only - only gateway-level ExtProc should run
+	// Expect x-extproc-server-a but NOT x-extproc-server-b
+	s.TestInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
+		s.Ctx,
+		testdefaults.CurlPodExecOpt,
+		[]curl.Option{
+			curl.WithHost(kubeutils.ServiceFQDN(deepMergeGatewayService.ObjectMeta)),
+			curl.VerboseOutput(),
+			curl.WithHostHeader("www.example.com"),
+			curl.WithPath("/gateway-only"),
+			curl.WithPort(8080),
+		},
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body: gomega.WithTransform(transforms.WithJsonBody(),
+				gomega.And(
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Extproc-Server-A")),
+					gomega.HaveKeyWithValue("headers", gomega.Not(gomega.HaveKey("X-Extproc-Server-B"))),
 				),
 			),
 		})
