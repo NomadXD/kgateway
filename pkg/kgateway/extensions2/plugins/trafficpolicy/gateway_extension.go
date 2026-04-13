@@ -43,7 +43,7 @@ type TrafficPolicyGatewayExtensionIR struct {
 	Jwt              *envoymatchingv3.ExtensionWithMatcher
 	OAuth2           *oauthPerProviderConfig
 	PrecedenceWeight int32
-	FilterStage      *kgateway.FilterStageConfig
+	FilterStage      *kgateway.FilterStageSpec
 	Err              error
 }
 

@@ -423,10 +423,11 @@ func (p *trafficPolicyPluginGwPass) HttpFilters(_ ir.HttpFiltersContext, fcc ir.
 			continue
 		}
 
-		// Resolve weight: use FilterStageConfig.Weight if set,
-		// otherwise fall back to PrecedenceWeight for backward compat
-		weight := provider.Extension.PrecedenceWeight
-		if provider.Extension.FilterStage != nil && provider.Extension.FilterStage.Weight != 0 {
+		// Use FilterStageSpec.Weight for filter chain ordering.
+		// PrecedenceWeight (from kgateway.dev/policy-weight annotation) is for
+		// policy merge ordering, not filter chain ordering, so it is not used here.
+		var weight int32
+		if provider.Extension.FilterStage != nil {
 			weight = provider.Extension.FilterStage.Weight
 		}
 

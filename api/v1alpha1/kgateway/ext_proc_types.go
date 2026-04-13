@@ -73,7 +73,7 @@ type ExtProcProvider struct {
 	// should be placed. If not specified, the ExtProc filter defaults to running
 	// after the AuthZ stage.
 	// +optional
-	FilterStage *FilterStageConfig `json:"filterStage,omitempty"`
+	FilterStage *FilterStageSpec `json:"filterStage,omitempty"`
 }
 
 type ExtProcRouteCacheAction string

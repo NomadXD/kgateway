@@ -120,7 +120,7 @@ func constructExtProc(
 			{
 				provider:       gatewayExtension,
 				perRouteConfig: translateExtProcPerFilterConfig(spec),
-				filterStage:    convertFilterStageConfig(gatewayExtension.FilterStage, defaultExtProcFilterStage),
+				filterStage:    convertFilterStageSpec(gatewayExtension.FilterStage, defaultExtProcFilterStage),
 			},
 		},
 		providerNames: sets.New(providerName(gatewayExtension)),
@@ -221,10 +221,10 @@ func providerName(provider *TrafficPolicyGatewayExtensionIR) string {
 
 var defaultExtProcFilterStage = filters.AfterStage(filters.WellKnownFilterStage(filters.AuthZStage))
 
-// convertFilterStageConfig converts a user-facing FilterStageConfig to an
+// convertFilterStageSpec converts a user-facing FilterStageSpec to an
 // internal filters.FilterStage. Returns the provided default if cfg is nil.
-func convertFilterStageConfig(
-	cfg *kgateway.FilterStageConfig,
+func convertFilterStageSpec(
+	cfg *kgateway.FilterStageSpec,
 	defaultStage filters.FilterStage[filters.WellKnownFilterStage],
 ) filters.FilterStage[filters.WellKnownFilterStage] {
 	if cfg == nil {

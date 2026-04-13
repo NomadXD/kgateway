@@ -31,9 +31,9 @@ const (
 	FilterStagePredicateAfter FilterStagePredicate = "After"
 )
 
-// FilterStageConfig specifies where in the HTTP filter chain a filter should
+// FilterStageSpec specifies where in the HTTP filter chain a filter should
 // be placed.
-type FilterStageConfig struct {
+type FilterStageSpec struct {
 	// Stage selects the well-known position in the filter chain.
 	// +required
 	Stage FilterStage `json:"stage"`

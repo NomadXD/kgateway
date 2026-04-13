@@ -232,10 +232,10 @@ func TestBuildEnvoyExtProc(t *testing.T) {
 	}
 }
 
-func TestConvertFilterStageConfig(t *testing.T) {
+func TestConvertFilterStageSpec(t *testing.T) {
 	tests := []struct {
 		name     string
-		cfg      *kgateway.FilterStageConfig
+		cfg      *kgateway.FilterStageSpec
 		expected filters.FilterStage[filters.WellKnownFilterStage]
 	}{
 		{
@@ -245,59 +245,59 @@ func TestConvertFilterStageConfig(t *testing.T) {
 		},
 		{
 			name:     "Fault/Before",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageFault, Predicate: kgateway.FilterStagePredicateBefore},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageFault, Predicate: kgateway.FilterStagePredicateBefore},
 			expected: filters.BeforeStage(filters.FaultStage),
 		},
 		{
 			name:     "Fault/During",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageFault, Predicate: kgateway.FilterStagePredicateDuring},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageFault, Predicate: kgateway.FilterStagePredicateDuring},
 			expected: filters.DuringStage(filters.FaultStage),
 		},
 		{
 			name:     "Fault/After",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageFault, Predicate: kgateway.FilterStagePredicateAfter},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageFault, Predicate: kgateway.FilterStagePredicateAfter},
 			expected: filters.AfterStage(filters.FaultStage),
 		},
 		{
 			name:     "AuthN/Before",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageAuthN, Predicate: kgateway.FilterStagePredicateBefore},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageAuthN, Predicate: kgateway.FilterStagePredicateBefore},
 			expected: filters.BeforeStage(filters.AuthNStage),
 		},
 		{
 			name:     "AuthN/During",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageAuthN, Predicate: kgateway.FilterStagePredicateDuring},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageAuthN, Predicate: kgateway.FilterStagePredicateDuring},
 			expected: filters.DuringStage(filters.AuthNStage),
 		},
 		{
 			name:     "AuthZ/After",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageAuthZ, Predicate: kgateway.FilterStagePredicateAfter},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageAuthZ, Predicate: kgateway.FilterStagePredicateAfter},
 			expected: filters.AfterStage(filters.AuthZStage),
 		},
 		{
 			name:     "RateLimit/During",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageRateLimit, Predicate: kgateway.FilterStagePredicateDuring},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageRateLimit, Predicate: kgateway.FilterStagePredicateDuring},
 			expected: filters.DuringStage(filters.RateLimitStage),
 		},
 		{
 			name:     "Route/Before",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageRoute, Predicate: kgateway.FilterStagePredicateBefore},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageRoute, Predicate: kgateway.FilterStagePredicateBefore},
 			expected: filters.BeforeStage(filters.RouteStage),
 		},
 		{
 			name:     "unknown stage returns default",
-			cfg:      &kgateway.FilterStageConfig{Stage: "Unknown", Predicate: kgateway.FilterStagePredicateBefore},
+			cfg:      &kgateway.FilterStageSpec{Stage: "Unknown", Predicate: kgateway.FilterStagePredicateBefore},
 			expected: defaultExtProcFilterStage,
 		},
 		{
 			name:     "empty predicate defaults to During",
-			cfg:      &kgateway.FilterStageConfig{Stage: kgateway.FilterStageAuthN},
+			cfg:      &kgateway.FilterStageSpec{Stage: kgateway.FilterStageAuthN},
 			expected: filters.DuringStage(filters.AuthNStage),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertFilterStageConfig(tt.cfg, defaultExtProcFilterStage)
+			result := convertFilterStageSpec(tt.cfg, defaultExtProcFilterStage)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
