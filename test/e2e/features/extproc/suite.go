@@ -53,6 +53,7 @@ var (
 			Manifests:       []string{filterStageManifest},
 			MinGwApiVersion: base.GwApiRequireRouteNames,
 		},
+		// Requires KGW_POLICY_MERGE={"trafficPolicy":{"extProc":"DeepMerge"}}
 		"TestExtProcWithFilterStageWeightOrdering": {
 			Manifests: []string{dualServersManifest, filterStageWeightManifest},
 		},
