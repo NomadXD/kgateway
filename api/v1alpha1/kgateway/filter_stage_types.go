@@ -47,7 +47,7 @@ type FilterStageSpec struct {
 	// Weight controls ordering among multiple filters at the same
 	// stage and predicate. Higher weight places the filter earlier in the
 	// chain. Defaults to 0. Filters with the same stage, predicate, and
-	// weight are sorted alphabetically by filter name for stability.
+	// weight are sorted alphabetically by filter name for consistency.
 	// +optional
 	// +kubebuilder:default=0
 	Weight int32 `json:"weight,omitempty"`
