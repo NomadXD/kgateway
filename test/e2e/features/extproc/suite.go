@@ -53,6 +53,9 @@ var (
 			Manifests:       []string{filterStageManifest},
 			MinGwApiVersion: base.GwApiRequireRouteNames,
 		},
+		"TestExtProcWithFilterStageWeightOrdering": {
+			Manifests: []string{filterStageWeightManifest},
+		},
 		"TestExtProcWithDeepMerge": {
 			Manifests: []string{deepMergeManifest},
 		},
@@ -355,6 +358,65 @@ func (s *testingSuite) TestExtProcWithFilterStage() {
 		})
 }
 
+// TestExtProcWithFilterStageWeightOrdering tests that multiple ExtProc filters
+// at the same stage are ordered by their filterStage weight. Higher weight
+// places the filter earlier in the chain.
+// Requires kgateway to be deployed with KGW_POLICY_MERGE={"trafficPolicy":{"extProc":"DeepMerge"}}
+// so that multiple ExtProc policies attached via extensionRef filters are both applied.
+func (s *testingSuite) TestExtProcWithFilterStageWeightOrdering() {
+	// Verify both filters execute: high-weight (weight=10) and low-weight (weight=-5)
+	// headers should both be present
+	s.TestInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
+		s.Ctx,
+		testdefaults.CurlPodExecOpt,
+		[]curl.Option{
+			curl.WithHost(kubeutils.ServiceFQDN(gatewayService.ObjectMeta)),
+			curl.VerboseOutput(),
+			curl.WithHostHeader("www.example.com"),
+			curl.WithPath("/both"),
+			curl.WithPort(8080),
+		},
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body: gomega.WithTransform(transforms.WithJsonBody(),
+				gomega.And(
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Processed-By-High")),
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Processed-By-Low")),
+				),
+			),
+		})
+
+	// Verify filter execution order: high-weight (weight=10) runs before low-weight
+	// (weight=-5). Both servers receive the instruction to remove x-processed-by-high.
+	// High-weight server runs first: its --add-header sets x-processed-by-high (Envoy
+	// applies removes before sets within a single response, so the header is present).
+	// Low-weight server runs second: removes x-processed-by-high (added by high-weight
+	// server) and adds x-processed-by-low.
+	// Result: x-processed-by-high absent proves high-weight ran before low-weight.
+	s.TestInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
+		s.Ctx,
+		testdefaults.CurlPodExecOpt,
+		[]curl.Option{
+			curl.WithHost(kubeutils.ServiceFQDN(gatewayService.ObjectMeta)),
+			curl.VerboseOutput(),
+			curl.WithHostHeader("www.example.com"),
+			curl.WithPath("/both"),
+			curl.WithPort(8080),
+			curl.WithHeader("instructions", getInstructionsJson(instructions{
+				RemoveHeaders: []string{"x-processed-by-high"},
+			})),
+		},
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body: gomega.WithTransform(transforms.WithJsonBody(),
+				gomega.And(
+					gomega.HaveKeyWithValue("headers", gomega.Not(gomega.HaveKey("X-Processed-By-High"))),
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Processed-By-Low")),
+				),
+			),
+		})
+}
+
 // TestExtProcWithDeepMerge tests that two ExtProc filters from different
 // hierarchy levels (Gateway + HTTPRoute) can both be active on the same route
 // when the Gateway has the inherited-policy-priority annotation set to
@@ -378,6 +440,37 @@ func (s *testingSuite) TestExtProcWithDeepMerge() {
 			Body: gomega.WithTransform(transforms.WithJsonBody(),
 				gomega.And(
 					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Extproc-Server-A")),
+					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Extproc-Server-B")),
+				),
+			),
+		})
+
+	// Verify filter execution order: Server A (ext-proc-a, gateway-level) runs before
+	// Server B (ext-proc-b, route-level) because filter names are sorted alphabetically
+	// when at the same stage.
+	// Both servers receive the instruction to remove x-extproc-server-a. Server A runs
+	// first: its --add-header sets x-extproc-server-a (Envoy applies removes before sets
+	// within a single response, so the header is present). Server B runs second: removes
+	// x-extproc-server-a (added by Server A) and adds x-extproc-server-b.
+	// Result: x-extproc-server-a absent proves Server A ran before Server B.
+	s.TestInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
+		s.Ctx,
+		testdefaults.CurlPodExecOpt,
+		[]curl.Option{
+			curl.WithHost(kubeutils.ServiceFQDN(deepMergeGatewayService.ObjectMeta)),
+			curl.VerboseOutput(),
+			curl.WithHostHeader("www.example.com"),
+			curl.WithPath("/both"),
+			curl.WithPort(8080),
+			curl.WithHeader("instructions", getInstructionsJson(instructions{
+				RemoveHeaders: []string{"x-extproc-server-a"},
+			})),
+		},
+		&testmatchers.HttpResponse{
+			StatusCode: http.StatusOK,
+			Body: gomega.WithTransform(transforms.WithJsonBody(),
+				gomega.And(
+					gomega.HaveKeyWithValue("headers", gomega.Not(gomega.HaveKey("X-Extproc-Server-A"))),
 					gomega.HaveKeyWithValue("headers", gomega.HaveKey("X-Extproc-Server-B")),
 				),
 			),

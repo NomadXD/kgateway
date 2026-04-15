@@ -19,6 +19,7 @@ var (
 	singleRouteManifest        = filepath.Join(fsutils.MustGetThisDir(), "testdata", "single-route.yaml")
 	backendFilterManifest      = filepath.Join(fsutils.MustGetThisDir(), "testdata", "backend-filter.yaml")
 	filterStageManifest        = filepath.Join(fsutils.MustGetThisDir(), "testdata", "filter-stage.yaml")
+	filterStageWeightManifest  = filepath.Join(fsutils.MustGetThisDir(), "testdata", "filter-stage-weight.yaml")
 	deepMergeManifest          = filepath.Join(fsutils.MustGetThisDir(), "testdata", "deep-merge.yaml")
 
 	// Core infrastructure objects that we need to track
