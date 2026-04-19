@@ -461,6 +461,8 @@ func (k *kgatewayParameters) getValues(gw *gwv1.Gateway, gwParam *kgateway.Gatew
 		}
 	}
 
+	gateway.StaticListenerProxyProtocol = envoyContainerConfig.GetBootstrap().GetStaticListenerProxyProtocol()
+
 	gateway.Resources = envoyContainerConfig.GetResources()
 	gateway.SecurityContext = envoyContainerConfig.GetSecurityContext()
 	gateway.Image = deployer.GetImageValues(envoyContainerConfig.GetImage())

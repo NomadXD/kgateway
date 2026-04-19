@@ -384,6 +384,16 @@ type EnvoyBootstrap struct {
 	//
 	// +optional
 	DnsResolver *DnsResolver `json:"dnsResolver,omitempty"`
+
+	// StaticListenerProxyProtocol enables the PROXY protocol listener filter
+	// on kgateway readiness listener (port 8082).
+	// This should be set to true if and only if the load balancer in front of the
+	// gateway prepends PROXY protocol headers to incoming TCP connections.
+	// For example, if using an AWS NLB with proxy protocol v2 enabled at the target group level
+	// (`service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"`), this should be set to true. Defaults to false.
+	//
+	// +optional
+	StaticListenerProxyProtocol *bool `json:"staticListenerProxyProtocol,omitempty"`
 }
 
 // LogFormat configures Envoy's application log format. Either JSON or Text must be specified.
@@ -440,6 +450,13 @@ func (in *EnvoyBootstrap) GetDnsResolver() *DnsResolver {
 		return nil
 	}
 	return in.DnsResolver
+}
+
+func (in *EnvoyBootstrap) GetStaticListenerProxyProtocol() *bool {
+	if in == nil {
+		return nil
+	}
+	return in.StaticListenerProxyProtocol
 }
 
 func (in *DnsResolver) GetUdpMaxQueries() *int32 {

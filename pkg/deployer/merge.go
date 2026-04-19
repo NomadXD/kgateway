@@ -658,6 +658,10 @@ func deepMergeEnvoyBootstrap(dst, src *kgateway.EnvoyBootstrap) *kgateway.EnvoyB
 	dst.ComponentLogLevels = DeepMergeMaps(dst.GetComponentLogLevels(), src.GetComponentLogLevels())
 	dst.DnsResolver = deepMergeDnsResolver(dst.GetDnsResolver(), src.GetDnsResolver())
 
+	if src.GetStaticListenerProxyProtocol() != nil {
+		dst.StaticListenerProxyProtocol = src.GetStaticListenerProxyProtocol()
+	}
+
 	return dst
 }
 
