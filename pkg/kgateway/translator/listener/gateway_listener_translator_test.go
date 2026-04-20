@@ -664,7 +664,7 @@ var _ = Describe("Translator TCPRoute Listener", func() {
 			}
 
 			olderRoute := tcpRoute("older-tcp-route")
-			olderRoute.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-time.Hour))
+			olderRoute.CreationTimestamp = metav1.NewTime(time.Now().Add(-time.Hour))
 			olderRoute.Spec = gwv1a2.TCPRouteSpec{
 				CommonRouteSpec: gwv1.CommonRouteSpec{ParentRefs: parentRefs},
 				Rules:           []gwv1a2.TCPRouteRule{{BackendRefs: backendRefs}},
@@ -678,9 +678,11 @@ var _ = Describe("Translator TCPRoute Listener", func() {
 			}
 
 			By("Creating the RouteInfo slice with both routes")
+			// newer first, to prove ordering is by timestamp not slice order.
+			// ParentRef mirrors the specific listener attachment as set by the query layer.
 			routes := []*query.RouteInfo{
-				{Object: tcpToIr(newerRoute)}, // newer first, to prove ordering is by timestamp not slice order
-				{Object: tcpToIr(olderRoute)},
+				{Object: tcpToIr(newerRoute), ParentRef: parentRefs[0]},
+				{Object: tcpToIr(olderRoute), ParentRef: parentRefs[0]},
 			}
 
 			By("Setting up a fresh reporter and translating the listener")

@@ -640,10 +640,8 @@ func (tc *tcpFilterChain) translateTcpFilterChain(
 	}
 }
 
-// rejectConflictingRoute sets Accepted=False on every parent ref of a route
-// that was attached to a TCP/TLS listener alongside another, older route. A
-// TCP listener can only honor a single route, so losers in the oldest-wins
-// selection must be reported back to the user per the Gateway API spec.
+// rejectConflictingRoute sets Accepted=False on the specific listener
+// attachment of a route that lost the oldest-wins selection.
 func rejectConflictingRoute(ri *query.RouteInfo, reporter reports.Reporter) {
 	condition := reports.RouteCondition{
 		Type:   gwv1.RouteConditionAccepted,
@@ -652,13 +650,9 @@ func rejectConflictingRoute(ri *query.RouteInfo, reporter reports.Reporter) {
 	}
 	switch o := ri.Object.(type) {
 	case *ir.TcpRouteIR:
-		for _, parentRef := range o.ParentRefs {
-			reporter.Route(o.SourceObject).ParentRef(&parentRef).SetCondition(condition)
-		}
+		reporter.Route(o.SourceObject).ParentRef(&ri.ParentRef).SetCondition(condition)
 	case *ir.TlsRouteIR:
-		for _, parentRef := range o.ParentRefs {
-			reporter.Route(o.SourceObject).ParentRef(&parentRef).SetCondition(condition)
-		}
+		reporter.Route(o.SourceObject).ParentRef(&ri.ParentRef).SetCondition(condition)
 	}
 }
 
