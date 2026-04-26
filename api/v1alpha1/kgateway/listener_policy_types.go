@@ -264,8 +264,9 @@ type HTTPSettings struct {
 
 	// ForwardClientCertDetails configures how Envoy handles the x-forwarded-client-cert (XFCC)
 	// header and which parts of the downstream client certificate are forwarded to upstream
-	// backends. This only has effect on listeners where mTLS is configured; on other listeners
-	// the setting is silently ignored because no client certificate is available.
+	// backends. Most modes only have effect on listeners where mTLS is configured. The exceptions
+	// are Sanitize, which strips XFCC unconditionally, and AlwaysForwardOnly, which forwards XFCC
+	// unconditionally; on a non-mTLS listener under any other mode the setting is a no-op.
 	// See: https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/network/http_connection_manager/v3/http_connection_manager.proto#envoy-v3-api-field-extensions-filters-network-http-connection-manager-v3-httpconnectionmanager-forward-client-cert-details
 	// +optional
 	ForwardClientCertDetails *ForwardClientCertDetails `json:"forwardClientCertDetails,omitempty"`
