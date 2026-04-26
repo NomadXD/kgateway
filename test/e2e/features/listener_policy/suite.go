@@ -535,9 +535,9 @@ func (s *testingSuite) TestForwardClientCertSanitizeSetDefault() {
 		})
 }
 
-// TestForwardClientCertSanitizeSetAll sets every detail flag. The backend
-// should see XFCC carrying Subject plus the URI and DNS SANs and a Cert
-// token (URL-encoded PEM).
+// TestForwardClientCertSanitizeSetAll sets every detail flag plus the
+// auto-emitted Hash. The backend should see XFCC carrying Hash, Cert,
+// Chain, Subject, URI, and DNS.
 func (s *testingSuite) TestForwardClientCertSanitizeSetAll() {
 	s.waitForEchoBackend()
 	s.testInstallation.AssertionsT(s.T()).AssertEventualCurlResponse(
@@ -546,9 +546,13 @@ func (s *testingSuite) TestForwardClientCertSanitizeSetAll() {
 		forwardClientCertCurlOpts(),
 		&matchers.HttpResponse{
 			StatusCode: http.StatusOK,
-			// All four selectors must appear on the same XFCC line.
+			// All six selectors must appear on the same XFCC line. Hash is
+			// always emitted by Envoy on a 'set' operation; the rest come from
+			// the details: {} block in policy-sanitize-set-all.yaml.
 			Body: gomega.And(
+				gomega.MatchRegexp(`(?i)x-forwarded-client-cert: .*Hash=[0-9a-f]{64}`),
 				gomega.MatchRegexp(`(?i)x-forwarded-client-cert: .*Cert="-----BEGIN%20CERTIFICATE-----`),
+				gomega.MatchRegexp(`(?i)x-forwarded-client-cert: .*Chain="-----BEGIN%20CERTIFICATE-----`),
 				gomega.MatchRegexp(`(?i)x-forwarded-client-cert: .*Subject="OU=engineering,O=acme,CN=alice"`),
 				gomega.MatchRegexp(`(?i)x-forwarded-client-cert: .*URI=spiffe://acme\.example\.com/ns/team-alpha/sa/alice`),
 				gomega.MatchRegexp(`(?i)x-forwarded-client-cert: .*DNS=alice\.acme\.example\.com`),
