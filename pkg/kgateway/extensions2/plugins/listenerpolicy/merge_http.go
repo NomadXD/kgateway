@@ -40,6 +40,8 @@ func MergeHttpPolicies(
 		mergeEarlyHeaderMutation,
 		mergeMaxRequestHeadersKb,
 		mergeUuidRequestIdConfig,
+		mergeForwardClientCertMode,
+		mergeSetCurrentClientCertDetails,
 	}
 	for _, mergeFunc := range mergeFuncs {
 		mergeFunc(origin, p1, p2, p2Ref, p2MergeOrigins, mergeOpts, mergeOrigins)
@@ -357,4 +359,36 @@ func mergeUuidRequestIdConfig(
 
 	p1.uuidRequestIdConfig = p2.uuidRequestIdConfig
 	mergeOrigins.SetOne(origin+"uuidRequestIdConfig", p2Ref, p2MergeOrigins)
+}
+
+func mergeForwardClientCertMode(
+	origin string,
+	p1, p2 *HttpListenerPolicyIr,
+	p2Ref *ir.AttachedPolicyRef,
+	p2MergeOrigins ir.MergeOrigins,
+	opts policy.MergeOptions,
+	mergeOrigins ir.MergeOrigins,
+) {
+	if !policy.IsMergeable(p1.forwardClientCertMode, p2.forwardClientCertMode, opts) {
+		return
+	}
+
+	p1.forwardClientCertMode = p2.forwardClientCertMode
+	mergeOrigins.SetOne(origin+"forwardClientCertDetails.mode", p2Ref, p2MergeOrigins)
+}
+
+func mergeSetCurrentClientCertDetails(
+	origin string,
+	p1, p2 *HttpListenerPolicyIr,
+	p2Ref *ir.AttachedPolicyRef,
+	p2MergeOrigins ir.MergeOrigins,
+	opts policy.MergeOptions,
+	mergeOrigins ir.MergeOrigins,
+) {
+	if !policy.IsMergeable(p1.setCurrentClientCertDetails, p2.setCurrentClientCertDetails, opts) {
+		return
+	}
+
+	p1.setCurrentClientCertDetails = p2.setCurrentClientCertDetails
+	mergeOrigins.SetOne(origin+"forwardClientCertDetails.details", p2Ref, p2MergeOrigins)
 }
