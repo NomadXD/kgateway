@@ -7,12 +7,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/onsi/gomega"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/kgateway-dev/kgateway/v2/pkg/utils/requestutils/curl"
 	"github.com/kgateway-dev/kgateway/v2/test/e2e"
 	"github.com/kgateway-dev/kgateway/v2/test/e2e/common"
 	"github.com/kgateway-dev/kgateway/v2/test/e2e/tests/base"
+	"github.com/kgateway-dev/kgateway/v2/test/envoyutils/admincli"
 	testmatchers "github.com/kgateway-dev/kgateway/v2/test/gomega/matchers"
 )
 
@@ -27,6 +30,43 @@ func NewTestingSuite(ctx context.Context, testInst *e2e.TestInstallation) suite.
 	return &testingSuite{
 		BaseTestingSuite: base.NewBaseTestingSuite(ctx, testInst, setup, testCases),
 	}
+}
+
+// BeforeTest overrides the base to wait for fault injection xDS config to propagate to
+// Envoy after manifests are applied. Without this, the test races against xDS propagation
+// and sees 200 instead of the injected fault response on slow clusters.
+func (s *testingSuite) BeforeTest(suiteName, testName string) {
+	s.BaseTestingSuite.BeforeTest(suiteName, testName)
+	if _, ok := s.TestCases[testName]; ok {
+		s.waitForFaultFilterInEnvoy()
+	}
+}
+
+// waitForFaultFilterInEnvoy polls the Envoy admin config dump until the fault injection
+// filter appears as an active typed_per_filter_config key (not just as a disabled listener
+// filter). This proves the xDS route config update was received by Envoy.
+func (s *testingSuite) waitForFaultFilterInEnvoy() {
+	s.TestInstallation.AssertionsT(s.T()).AssertEnvoyAdminApi(
+		s.Ctx,
+		gatewayObjectMeta,
+		func(ctx context.Context, adminClient *admincli.Client) {
+			s.TestInstallation.AssertionsT(s.T()).Gomega.Eventually(func(g gomega.Gomega) {
+				cfgDump, err := adminClient.GetConfigDump(ctx, nil)
+				g.Expect(err).NotTo(gomega.HaveOccurred(), "failed to get Envoy config dump")
+
+				cfgJSON, err := protojson.Marshal(cfgDump)
+				g.Expect(err).NotTo(gomega.HaveOccurred(), "failed to marshal Envoy config dump")
+
+				// In the JSON config dump, "envoy.filters.http.fault": appears as a map key
+				// inside typedPerFilterConfig when the policy is active. This is distinct from
+				// the listener declaration ("name": "envoy.filters.http.fault") which is always
+				// present with disabled:true whenever any fault policy exists.
+				g.Expect(string(cfgJSON)).To(gomega.ContainSubstring(`"envoy.filters.http.fault":`),
+					"fault injection config should be active in Envoy route or vhost typed_per_filter_config")
+			}).WithTimeout(30*time.Second).WithPolling(time.Second).
+				Should(gomega.Succeed(), "fault injection xDS config should propagate to Envoy")
+		},
+	)
 }
 
 // TestFaultInjectionAbortOnRoute verifies that a TrafficPolicy with 100% abort at HTTP 503
