@@ -1408,8 +1408,8 @@ func (in *EnvoyBootstrap) DeepCopyInto(out *EnvoyBootstrap) {
 		*out = new(DnsResolver)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.StaticListenerProxyProtocol != nil {
-		in, out := &in.StaticListenerProxyProtocol, &out.StaticListenerProxyProtocol
+	if in.EnableReadinessProbeProxyProtocol != nil {
+		in, out := &in.EnableReadinessProbeProxyProtocol, &out.EnableReadinessProbeProxyProtocol
 		*out = new(bool)
 		**out = **in
 	}

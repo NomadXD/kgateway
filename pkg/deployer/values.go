@@ -79,8 +79,8 @@ type HelmGateway struct {
 	ExtraVolumeMounts []corev1.VolumeMount         `json:"extraVolumeMounts,omitempty"`
 
 	// envoy bootstrap values
-	DnsResolver                 *HelmDnsResolver `json:"dnsResolver,omitempty"`
-	StaticListenerProxyProtocol *bool            `json:"staticListenerProxyProtocol,omitempty"`
+	DnsResolver                       *HelmDnsResolver `json:"dnsResolver,omitempty"`
+	EnableReadinessProbeProxyProtocol *bool            `json:"enableReadinessProbeProxyProtocol,omitempty"`
 
 	// xds values
 	Xds *HelmXds `json:"xds,omitempty"`
