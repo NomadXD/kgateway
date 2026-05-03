@@ -10,7 +10,7 @@ import (
 	"time"
 
 	adminv3 "github.com/envoyproxy/go-control-plane/envoy/admin/v3"
-	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	envoylistenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/gstruct"
 	"github.com/stretchr/testify/assert"
@@ -648,13 +648,13 @@ func readinessProxyProtocolAssertion(t *testing.T, testInstallation *e2e.TestIns
 
 // findStaticListener walks the static_listeners config dump and returns the
 // listener with the matching name, or nil if not found.
-func findStaticListener(cfgDump *adminv3.ConfigDump, name string) *listenerv3.Listener {
+func findStaticListener(cfgDump *adminv3.ConfigDump, name string) *envoylistenerv3.Listener {
 	for _, c := range cfgDump.GetConfigs() {
 		var sl adminv3.ListenersConfigDump_StaticListener
 		if err := c.UnmarshalTo(&sl); err != nil {
 			continue
 		}
-		var l listenerv3.Listener
+		var l envoylistenerv3.Listener
 		if err := sl.GetListener().UnmarshalTo(&l); err != nil {
 			continue
 		}
