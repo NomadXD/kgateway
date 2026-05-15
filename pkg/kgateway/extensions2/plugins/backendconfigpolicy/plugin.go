@@ -26,6 +26,7 @@ import (
 	sdk "github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/collections"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/ir"
+	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/policy"
 	"github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/reporter"
 	pluginsdkutils "github.com/kgateway-dev/kgateway/v2/pkg/pluginsdk/utils"
 	"github.com/kgateway-dev/kgateway/v2/pkg/reports"
@@ -205,11 +206,21 @@ func NewPlugin(ctx context.Context, commoncol *collections.CommonCollections, v 
 				Policies:                        backendConfigPolicyCol,
 				ProcessPolicyStaleStatusMarkers: processMarkers,
 				ProcessBackend:                  processBackend,
-				GetPolicyStatus:                 getPolicyStatusFn(cli),
-				PatchPolicyStatus:               patchPolicyStatusFn(cli),
+				MergePolicies: func(pols []ir.PolicyAtt) ir.PolicyAtt {
+					return policy.MergePolicies(pols, mergeBackendConfigPolicies, "")
+				},
+				GetPolicyStatus:   getPolicyStatusFn(cli),
+				PatchPolicyStatus: patchPolicyStatusFn(cli),
 			},
 		},
 	}
+}
+
+// hasBackendTLSPolicy reports whether the backend has a BackendTLSPolicy
+// attached. This is used to determine whether BCP's TLS config should be applied,
+// as BTP wins for TLS when both are attached to the same backend.
+func hasBackendTLSPolicy(backend ir.BackendObjectIR) bool {
+	return len(backend.AttachedPolicies.Policies[wellknown.BackendTLSPolicyGVK.GroupKind()]) > 0
 }
 
 func processBackend(_ context.Context, polir ir.PolicyIR, backend ir.BackendObjectIR, out *envoyclusterv3.Cluster) {
@@ -232,7 +243,10 @@ func processBackend(_ context.Context, polir ir.PolicyIR, backend ir.BackendObje
 	applyHttp1ProtocolOptions(pol.http1ProtocolOptions, backend, out)
 	applyHttp2ProtocolOptions(pol.http2ProtocolOptions, backend, out)
 
-	if pol.tlsConfig != nil {
+	// BackendTLSPolicy (standard Gateway API) wins for TLS when both are attached
+	// to the same backend. BCP's TLS config is only applied if there is no attached BackendTLSPolicy.
+	tlsAllowed := pol.tlsConfig != nil && !hasBackendTLSPolicy(backend)
+	if tlsAllowed {
 		typedConfig, err := utils.MessageToAny(pol.tlsConfig)
 		if err != nil {
 			logger.Error("failed to convert tls config to any", "error", err)
