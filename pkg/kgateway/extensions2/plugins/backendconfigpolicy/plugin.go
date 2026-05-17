@@ -2,6 +2,7 @@ package backendconfigpolicy
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	envoyclusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
@@ -207,13 +208,30 @@ func NewPlugin(ctx context.Context, commoncol *collections.CommonCollections, v 
 				ProcessPolicyStaleStatusMarkers: processMarkers,
 				ProcessBackend:                  processBackend,
 				MergePolicies: func(pols []ir.PolicyAtt) ir.PolicyAtt {
-					return policy.MergePolicies(pols, mergeBackendConfigPolicies, "")
+					return policy.MergePolicies(sortForMerge(pols), mergeBackendConfigPolicies, "")
 				},
 				GetPolicyStatus:   getPolicyStatusFn(cli),
 				PatchPolicyStatus: patchPolicyStatusFn(cli),
 			},
 		},
 	}
+}
+
+// sortForMerge sorts policies by precedence weight (desc), creation time
+// (asc), ref string. The ref string is the tie-breaker when two policies
+// share a creation timestamp.
+func sortForMerge(pols []ir.PolicyAtt) []ir.PolicyAtt {
+	out := slices.Clone(pols)
+	slices.SortStableFunc(out, func(a, b ir.PolicyAtt) int {
+		if a.PrecedenceWeight != b.PrecedenceWeight {
+			if a.PrecedenceWeight > b.PrecedenceWeight {
+				return -1
+			}
+			return 1
+		}
+		return ir.ComparePoliciesByCreationTimeAndRef(a, b)
+	})
+	return out
 }
 
 // hasBackendTLSPolicy reports whether the backend has a BackendTLSPolicy

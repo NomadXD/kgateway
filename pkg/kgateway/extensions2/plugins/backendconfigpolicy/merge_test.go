@@ -57,6 +57,36 @@ func TestMergeOlderWinsPerField(t *testing.T) {
 	}
 }
 
+// TestSortForMergeRefTieBreakerStable verifies that two policies sharing a
+// creation timestamp pick a deterministic winner via the policy ref string,
+// independent of the input slice order.
+func TestSortForMergeRefTieBreakerStable(t *testing.T) {
+	ts := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	policyA := &BackendConfigPolicyIR{ct: ts, connectTimeout: durationpb.New(1 * time.Second)}
+	policyB := &BackendConfigPolicyIR{ct: ts, connectTimeout: durationpb.New(2 * time.Second)}
+
+	gk := schema.GroupKind{Group: "gateway.kgateway.dev", Kind: "BackendConfigPolicy"}
+	// "a" sorts before "b" by ref string, so policyA should always win regardless
+	// of input order.
+	attA := ir.PolicyAtt{GroupKind: gk, PolicyRef: &ir.AttachedPolicyRef{Name: "a"}, PolicyIr: policyA}
+	attB := ir.PolicyAtt{GroupKind: gk, PolicyRef: &ir.AttachedPolicyRef{Name: "b"}, PolicyIr: policyB}
+
+	for _, tc := range []struct {
+		name  string
+		input []ir.PolicyAtt
+	}{
+		{"a then b", []ir.PolicyAtt{attA, attB}},
+		{"b then a", []ir.PolicyAtt{attB, attA}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			merged := policy.MergePolicies(sortForMerge(tc.input), mergeBackendConfigPolicies, "")
+			got := merged.PolicyIr.(*BackendConfigPolicyIR)
+			assert.Equal(t, 1*time.Second, got.connectTimeout.AsDuration(),
+				"policy with the lexicographically smaller ref must win on a creation-time tie")
+		})
+	}
+}
+
 // TestMergeFillsUnsetFields verifies that fields unset in p1 get filled in by p2.
 func TestMergeFillsUnsetFields(t *testing.T) {
 	older := &BackendConfigPolicyIR{
